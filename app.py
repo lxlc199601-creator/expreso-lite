@@ -73,7 +73,6 @@ def main() -> None:
         st.success("Loaded local joblib models and generated model predictions.")
 
     st.subheader("Cleaned sequence")
-    st.code(cleaned_sequence, language="text")
     st.caption(f"Valid length: {len(cleaned_sequence)} aa")
 
     prediction_rows = build_prediction_rows(prediction_result.probabilities)

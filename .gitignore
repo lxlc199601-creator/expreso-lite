@@ -7,6 +7,11 @@ venv/
 .streamlit/secrets.toml
 models/*.joblib
 data/*
+data/antibody_sequence_lookup.csv
 !data/.gitkeep
 !data/training_template.csv
+!data/antibody_sequence_lookup_template.csv
 notebooks/.ipynb_checkpoints/
+models/feature_columns.json
+reports/
+data/antibody_sequence_lookup.csv

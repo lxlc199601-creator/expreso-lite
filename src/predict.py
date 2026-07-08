@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,20 @@ EXCIPIENT_CLASSES = [
     "Preservative",
 ]
 
+MODEL_FILENAMES = [
+    "00_buffer_ph_modifier.joblib",
+    "01_sugar_stabilizer.joblib",
+    "02_polyol_stabilizer.joblib",
+    "03_surfactant.joblib",
+    "04_amino_acid_stabilizer.joblib",
+    "05_antioxidant.joblib",
+    "06_chelating_agent.joblib",
+    "07_salt_ionic_strength_modifier.joblib",
+    "08_preservative.joblib",
+]
+
+FEATURE_SCHEMA_FILENAME = "feature_columns.json"
+
 
 @dataclass(frozen=True)
 class PredictionResult:
@@ -31,11 +46,36 @@ class PredictionResult:
 def _find_model_files(model_dir: Path) -> list[Path]:
     if not model_dir.exists():
         return []
-    return sorted(model_dir.glob("*.joblib"))
+    model_files = [model_dir / filename for filename in MODEL_FILENAMES]
+    return model_files if all(path.exists() for path in model_files) else []
 
 
-def _feature_matrix(features: dict[str, float]) -> list[list[float]]:
-    return [[features[name] for name in FEATURE_COLUMNS]]
+def load_feature_columns(model_dir: Path) -> list[str] | None:
+    schema_path = model_dir / FEATURE_SCHEMA_FILENAME
+    if not schema_path.exists():
+        return None
+
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    feature_columns = schema.get("feature_columns")
+    if not isinstance(feature_columns, list):
+        return None
+    if not all(isinstance(name, str) for name in feature_columns):
+        return None
+    if set(feature_columns) != set(FEATURE_COLUMNS):
+        return None
+
+    return feature_columns
+
+
+def _feature_matrix(
+    features: dict[str, float],
+    feature_columns: list[str],
+) -> list[list[float]]:
+    return [[features[name] for name in feature_columns]]
 
 
 def _clip_probability(value: float) -> float:
@@ -93,21 +133,36 @@ def predict_probabilities(
 ) -> PredictionResult:
     names = class_names or EXCIPIENT_CLASSES
     model_files = _find_model_files(model_dir)
+    feature_columns = load_feature_columns(model_dir)
 
-    if len(model_files) != MODEL_COUNT:
+    if len(model_files) != MODEL_COUNT or feature_columns is None:
         return PredictionResult(
             probabilities=_mock_probabilities(features, names),
             used_mock=True,
             model_files=model_files,
         )
 
-    import joblib
+    try:
+        import joblib
+    except ImportError:
+        return PredictionResult(
+            probabilities=_mock_probabilities(features, names),
+            used_mock=True,
+            model_files=model_files,
+        )
 
-    matrix = _feature_matrix(features)
+    matrix = _feature_matrix(features, feature_columns)
     probabilities: dict[str, float] = {}
-    for class_name, model_file in zip(names, model_files, strict=True):
-        model = joblib.load(model_file)
-        probabilities[class_name] = _probability_from_model(model, matrix)
+    try:
+        for class_name, model_file in zip(names, model_files, strict=True):
+            model = joblib.load(model_file)
+            probabilities[class_name] = _probability_from_model(model, matrix)
+    except Exception:
+        return PredictionResult(
+            probabilities=_mock_probabilities(features, names),
+            used_mock=True,
+            model_files=model_files,
+        )
 
     return PredictionResult(
         probabilities=probabilities,
