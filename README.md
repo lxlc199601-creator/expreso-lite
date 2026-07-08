@@ -4,6 +4,10 @@ ExPreSo-Lite is a lightweight Streamlit MVP for protein excipient recommendation
 It accepts a protein FASTA record or plain amino-acid sequence, extracts basic
 sequence features, and ranks probabilities for 9 excipient classes.
 
+This repository is currently a mock demo. It does not include trained model
+files, so the deployed app will show mock probabilities for workflow preview
+only, not real model predictions.
+
 This first version only implements Fast mode. It does not run large sequence
 models, structure prediction, structure parsing, or local large model inference.
 

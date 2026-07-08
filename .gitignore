@@ -5,3 +5,7 @@ venv/
 .env
 .DS_Store
 .streamlit/secrets.toml
+models/*.joblib
+data/*
+!data/.gitkeep
+notebooks/.ipynb_checkpoints/
