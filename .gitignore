@@ -8,4 +8,5 @@ venv/
 models/*.joblib
 data/*
 !data/.gitkeep
+!data/training_template.csv
 notebooks/.ipynb_checkpoints/
